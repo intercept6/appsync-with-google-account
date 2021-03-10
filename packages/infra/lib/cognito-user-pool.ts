@@ -3,14 +3,16 @@ import {
   IUserPool,
   IUserPoolClient,
   OAuthScope,
+  ProviderAttribute,
   UserPool,
   UserPoolClientIdentityProvider,
   UserPoolIdentityProviderGoogle,
 } from "@aws-cdk/aws-cognito";
 
 export interface CognitoUserPoolProps {
-  clientId: string;
-  clientSecret: string;
+  googleClientId: string;
+  googleClientSecret: string;
+  domainPrefix: string;
 }
 
 export class CognitoUserPool extends Construct {
@@ -25,7 +27,7 @@ export class CognitoUserPool extends Construct {
     });
     userPool.addDomain("domain", {
       cognitoDomain: {
-        domainPrefix: "appsync-with-google",
+        domainPrefix: props.domainPrefix,
       },
     });
     const userPoolClient = userPool.addClient("client", {
@@ -42,14 +44,20 @@ export class CognitoUserPool extends Construct {
       },
       supportedIdentityProviders: [UserPoolClientIdentityProvider.GOOGLE],
     });
+
     const googleIdp = new UserPoolIdentityProviderGoogle(
       this,
       "google-provider",
       {
         userPool,
-        clientId: props.clientId,
-        clientSecret: props.clientSecret,
+        clientId: props.googleClientId,
+        clientSecret: props.googleClientSecret,
         scopes: ["openid", "email", "profile"],
+        attributeMapping: {
+          email: ProviderAttribute.GOOGLE_EMAIL,
+          profilePicture: ProviderAttribute.GOOGLE_PICTURE,
+          nickname: ProviderAttribute.GOOGLE_NAME,
+        },
       }
     );
     if (googleIdp) {

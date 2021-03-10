@@ -1,0 +1,10 @@
+{
+  "InfraStack": {
+    "identitypoolid": "ap-northeast-1:109af3ba-4079-47f8-b2d3-406977427be8",
+    "domain": "appsync-with-google.auth.ap-northeast-1.amazoncognito.com",
+    "userpoolid": "ap-northeast-1_Cu8dQiBO4",
+    "graphqlendpoint": "https://6nmqxoh2ufez5frvozr7armu3i.appsync-api.ap-northeast-1.amazonaws.com/graphql",
+    "region": "ap-northeast-1",
+    "userpoolclientid": "5lcs80mln22j5li6b5pe4ekkuc"
+  }
+}

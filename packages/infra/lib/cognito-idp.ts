@@ -1,4 +1,4 @@
-import { Construct } from "@aws-cdk/core";
+import { Construct, Stack } from "@aws-cdk/core";
 import {
   CfnIdentityPool,
   CfnIdentityPoolRoleAttachment,
@@ -7,23 +7,26 @@ import {
 } from "@aws-cdk/aws-cognito";
 import {
   Effect,
-  FederatedPrincipal,
+  WebIdentityPrincipal,
   PolicyDocument,
   PolicyStatement,
   Role,
 } from "@aws-cdk/aws-iam";
+import { IGraphqlApi } from "@aws-cdk/aws-appsync";
 
 export interface CognitoIdpProps {
   userPool: IUserPool;
   userPoolClient: IUserPoolClient;
   authenticatedPolicyDocument?: PolicyDocument;
   unauthenticatedPolicyDocument?: PolicyDocument;
+  graphqlApi: IGraphqlApi;
 }
 
 export class CognitoIdp extends Construct {
+  public readonly idp: CfnIdentityPool;
+
   constructor(scope: Construct, id: string, props: CognitoIdpProps) {
     super(scope, id);
-
     const authenticatedPolicyDocument =
       props.authenticatedPolicyDocument ??
       new PolicyDocument({
@@ -32,6 +35,18 @@ export class CognitoIdp extends Construct {
             effect: Effect.ALLOW,
             actions: ["cognito-sync:*", "cognito-identity:*"],
             resources: ["*"],
+          }),
+          new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ["appsync:GraphQL"],
+            resources: [
+              `arn:aws:appsync:${Stack.of(this).region}:${
+                Stack.of(this).account
+              }:apis/${props.graphqlApi.apiId}/types/Query/fields/*`,
+              `arn:aws:appsync:${Stack.of(this).region}:${
+                Stack.of(this).account
+              }:apis/${props.graphqlApi.apiId}/types/Mutation/fields/*`,
+            ],
           }),
         ],
       });
@@ -44,6 +59,15 @@ export class CognitoIdp extends Construct {
             effect: Effect.ALLOW,
             actions: ["cognito-sync:*"],
             resources: ["*"],
+          }),
+          new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ["appsync:GraphQL"],
+            resources: [
+              `arn:aws:appsync:${Stack.of(this).region}:${
+                Stack.of(this).account
+              }:apis/${props.graphqlApi.apiId}/types/Query/fields/*`,
+            ],
           }),
         ],
       });
@@ -60,7 +84,7 @@ export class CognitoIdp extends Construct {
     });
 
     const authenticated = new Role(this, "authenticated", {
-      assumedBy: new FederatedPrincipal("cognito-identity.amazonaws.com", {
+      assumedBy: new WebIdentityPrincipal("cognito-identity.amazonaws.com", {
         StringEquals: {
           "cognito-identity.amazonaws.com:aud": idp.ref,
         },
@@ -71,7 +95,7 @@ export class CognitoIdp extends Construct {
       inlinePolicies: { policy: authenticatedPolicyDocument },
     });
     const unauthenticated = new Role(this, "unauthenticated", {
-      assumedBy: new FederatedPrincipal("cognito-identity.amazonaws.com", {
+      assumedBy: new WebIdentityPrincipal("cognito-identity.amazonaws.com", {
         StringEquals: { "cognito-identity.amazonaws.com:aud": idp.ref },
         "ForAnyValue:StringLike": {
           "cognito-identity.amazonaws.com:amr": "unauthenticated",
@@ -86,14 +110,8 @@ export class CognitoIdp extends Construct {
         authenticated: authenticated.roleArn,
         unauthenticated: unauthenticated.roleArn,
       },
-      // roleMappings: {
-      //   mapping: {
-      //     type: "Token",
-      //     identityProvider:
-      //       "cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-xxxxx:xxxx",
-      //     ambiguousRoleResolution: "AuthenticatedRole",
-      //   },
-      // },
     });
+
+    this.idp = idp;
   }
 }

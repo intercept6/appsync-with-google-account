@@ -1,0 +1,17 @@
+input Message {
+    message: String!
+}
+
+type MessageTemplate {
+    id: String!
+    message: String!
+}
+
+type Query {
+    listMessages: [MessageTemplate]!
+}
+
+type Mutation {
+    addMessage(input: Message): MessageTemplate!
+}
+
